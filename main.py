@@ -1,4 +1,3 @@
-import os
 import asyncio
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -11,6 +10,9 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
+import os
+from fastapi import FastAPI
+import uvicorn
 
 # Настройки
 TOKEN = os.getenv("TOKEN")
@@ -643,6 +645,31 @@ async def main():
     scheduler.start()
 
     await dp.start_polling(bot)
+# --- ОСНОВНОЙ ЗАПУСК ---
+app = FastAPI()
 
+@app.get("/")
+def read_root():
+    return {"status": "ok"}
+
+async def run_bot():
+    await init_db()
+    await load_default_schedule()
+
+    scheduler = AsyncIOScheduler(timezone=TIMEZONE)
+    scheduler.add_job(send_reminder, CronTrigger(hour='*/4'))
+    scheduler.start()
+
+    await dp.start_polling(bot)
+
+async def run_server():
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn_config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
+    server = uvicorn.Server(uvicorn_config)
+    await server.serve()
+
+async def main():
+    await asyncio.gather(run_bot(), run_server())
+    
 if __name__ == '__main__':
     asyncio.run(main())
