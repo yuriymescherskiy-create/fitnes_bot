@@ -1,3 +1,4 @@
+import os
 import asyncio
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
@@ -12,7 +13,7 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 
 # Настройки
-TOKEN = '8215480988:AAE46UdptuIX_tsBqslQNk_6W0WYenVTxc4'
+TOKEN = os.getenv("TOKEN")
 ADMIN_ID = 2021080653
 TIMEZONE = ZoneInfo('Asia/Yekaterinburg')
 
