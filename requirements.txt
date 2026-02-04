@@ -1,1 +1,4 @@
-
+aiogram==3.13.1
+aiosqlite
+apscheduler
+pytz
