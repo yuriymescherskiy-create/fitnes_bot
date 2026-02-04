@@ -1,4 +1,5 @@
 import asyncio
+from aiogram.types import Update
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from aiogram import Bot, Dispatcher, F
