@@ -11,7 +11,7 @@ from apscheduler.triggers.cron import CronTrigger
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 import uvicorn
 
 # Настройки
@@ -645,31 +645,38 @@ async def main():
     scheduler.start()
 
     await dp.start_polling(bot)
-# --- ОСНОВНОЙ ЗАПУСК ---
+# --- FastAPI app ---
 app = FastAPI()
 
 @app.get("/")
 def read_root():
     return {"status": "ok"}
 
-async def run_bot():
-    await init_db()
-    await load_default_schedule()
+@app.post(f"/webhook/{TOKEN}")
+async def telegram_webhook(request: Request):
+    update_data = await request.json()
+    update = types.Update(**update_data)
+    await dp.feed_update(bot, update)
 
+# --- Запуск ---
+async def setup_webhook():
+    webhook_url = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME')}/webhook/{TOKEN}"
+    await bot.set_webhook(webhook_url)
+
+async def run_scheduler():
     scheduler = AsyncIOScheduler(timezone=TIMEZONE)
     scheduler.add_job(send_reminder, CronTrigger(hour='*/4'))
     scheduler.start()
 
-    await dp.start_polling(bot)
+async def main():
+    await init_db()
+    await setup_webhook()
+    await run_scheduler()
 
-async def run_server():
     port = int(os.environ.get("PORT", 8000))
     uvicorn_config = uvicorn.Config(app, host="0.0.0.0", port=port, log_level="info")
     server = uvicorn.Server(uvicorn_config)
     await server.serve()
 
-async def main():
-    await asyncio.gather(run_bot(), run_server())
-    
 if __name__ == '__main__':
     asyncio.run(main())
