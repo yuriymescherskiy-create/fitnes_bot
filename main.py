@@ -1,9 +1,8 @@
 import asyncio
-from aiogram.types import Update
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from aiogram import Bot, Dispatcher, F
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, Update
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.filters import Command
 import aiosqlite
@@ -659,11 +658,20 @@ async def telegram_webhook(request: Request):
     update = types.Update(**update_data)
     await dp.feed_update(bot, update)
 
-# --- Запуск ---
-async def setup_webhook():
-    webhook_url = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME')}/webhook/{TOKEN}"
-    await bot.set_webhook(webhook_url)
+# --- FastAPI app ---
+app = FastAPI()
 
+@app.get("/")
+def read_root():
+    return {"status": "ok"}
+
+@app.post(f"/webhook/{TOKEN}")
+async def telegram_webhook(request: Request):
+    json = await request.json()
+    update = Update.model_validate(json, context={"bot": bot})
+    await dp.feed_update(bot, update)
+
+# --- Запуск ---
 async def run_scheduler():
     scheduler = AsyncIOScheduler(timezone=TIMEZONE)
     scheduler.add_job(send_reminder, CronTrigger(hour='*/4'))
@@ -671,7 +679,6 @@ async def run_scheduler():
 
 async def main():
     await init_db()
-    await setup_webhook()
     await run_scheduler()
 
     port = int(os.environ.get("PORT", 8000))
